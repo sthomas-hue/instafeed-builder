@@ -10,7 +10,7 @@
     .feed-grid { display: grid; gap: var(--spacing); }
     .feed-masonry { column-count: var(--cols); gap: var(--spacing); }
     .post-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-    .post-card:hover { transform: scale(1.04); }
+    .post-card:hover { transform: scale(1.05); }
     .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); align-items: center; justify-content: center; z-index: 10000; }
   </style>
 </head>
@@ -28,13 +28,14 @@
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-    <!-- Config Panel -->
     <div class="bg-white p-8 rounded-3xl shadow-lg space-y-8">
+      <!-- Username -->
       <div>
         <label class="block text-sm font-medium mb-2">Instagram Username</label>
         <input id="username" type="text" value="claireglobal" class="w-full border rounded-2xl px-5 py-3 focus:outline-none focus:border-pink-500">
       </div>
 
+      <!-- Accent Color -->
       <div>
         <label class="block text-sm font-medium mb-2">Accent Color</label>
         <div class="flex gap-3 items-center">
@@ -74,7 +75,6 @@
           <select id="hover" class="w-full border rounded-2xl px-5 py-3">
             <option value="zoom">Zoom</option>
             <option value="overlay">Info Overlay</option>
-            <option value="lift">Lift</option>
             <option value="none">None</option>
           </select>
         </div>
@@ -90,7 +90,7 @@
       </div>
     </div>
 
-    <!-- Preview -->
+    <!-- Preview Area -->
     <div class="lg:col-span-2">
       <div id="preview-container" class="bg-white rounded-3xl shadow-lg p-6 min-h-[620px]">
         <h3 class="font-semibold mb-4 flex items-center gap-2">
@@ -128,10 +128,8 @@
   let currentPosts = [];
   let widgets = JSON.parse(localStorage.getItem('instawidgets') || '[]');
 
-  document.getElementById('accentColor').addEventListener('input', e => {
-    document.getElementById('accentHex').textContent = e.target.value;
-  });
-
+  // Tailwind + Sliders
+  document.getElementById('accentColor').addEventListener('input', e => document.getElementById('accentHex').textContent = e.target.value);
   function updateSliders() {
     document.getElementById('cols-val').textContent = document.getElementById('cols').value;
     document.getElementById('spacing-val').textContent = document.getElementById('spacing').value + 'px';
@@ -147,14 +145,13 @@
       const data = await res.json();
       const edges = data?.graphql?.user?.edge_owner_to_timeline_media?.edges || [];
       return edges.slice(0, limit).map(e => ({
-        id: e.node.id,
         image: e.node.display_url,
-        caption: (e.node.edge_media_to_caption?.edges[0]?.node.text || '').substring(0, 180),
+        caption: (e.node.edge_media_to_caption?.edges[0]?.node.text || '').substring(0, 150),
         likes: e.node.edge_liked_by?.count || 0
       }));
     } catch (e) {
+      // Fallback demo images (this is why it was blank before)
       return Array.from({length: limit}, (_, i) => ({
-        id: i,
         image: `https://picsum.photos/id/${200 + i}/800/800`,
         caption: "Beautiful moment captured 📸",
         likes: 2400 + Math.floor(Math.random() * 6000)
@@ -167,19 +164,16 @@
     const accent = document.getElementById('accentColor').value;
 
     currentConfig = {
-      username,
-      accent,
+      username, accent,
       layout: document.getElementById('layout').value,
       cols: +document.getElementById('cols').value,
       spacing: +document.getElementById('spacing').value,
       limit: +document.getElementById('limit').value,
       hover: document.getElementById('hover').value,
-      showTitle: document.getElementById('showTitle').checked,
-      refreshInterval: 60
+      showTitle: document.getElementById('showTitle').checked
     };
 
-    const previewEl = document.getElementById('preview');
-    previewEl.innerHTML = `<div class="flex justify-center items-center h-80"><i class="fa fa-spinner fa-spin text-5xl" style="color:${accent}"></i></div>`;
+    document.getElementById('preview').innerHTML = `<div class="flex justify-center items-center h-80"><i class="fa fa-spinner fa-spin text-5xl" style="color:${accent}"></i></div>`;
 
     currentPosts = await fetchInstagramPosts(username, currentConfig.limit);
     renderPreview();
@@ -213,7 +207,7 @@
   function createCard(post, hover, accent, masonry = false) {
     let extra = hover === 'overlay' ? `<div class="absolute inset-0 bg-gradient-to-t from-black/70 opacity-0 hover:opacity-100 p-4 flex items-end"><p class="text-white text-sm line-clamp-3">${post.caption}</p></div>` : '';
     return `
-      <div onclick="openLightbox(${post.id})" class="post-card group bg-white cursor-pointer ${masonry ? 'break-inside-avoid mb-6' : 'rounded-3xl overflow-hidden shadow-sm'}">
+      <div onclick="openLightbox(this)" class="post-card group bg-white cursor-pointer ${masonry ? 'break-inside-avoid mb-6' : 'rounded-3xl overflow-hidden shadow-sm'}">
         <div class="relative">
           <img src="${post.image}" loading="lazy" class="w-full aspect-square object-cover">
           ${extra}
@@ -225,22 +219,22 @@
       </div>`;
   }
 
-  function openLightbox(id) {
-    const post = currentPosts.find(p => p.id === id);
-    if (!post) return;
-    document.getElementById('lightbox-img').src = post.image;
-    document.getElementById('lightbox-caption').innerHTML = `<p class="leading-relaxed">${post.caption}</p><p class="mt-4 text-sm">${post.likes.toLocaleString()} likes</p>`;
+  function openLightbox(el) {
+    const img = el.querySelector('img').src;
+    document.getElementById('lightbox-img').src = img;
     document.getElementById('lightbox').style.display = 'flex';
   }
 
-  function closeLightbox() { document.getElementById('lightbox').style.display = 'none'; }
+  function closeLightbox() {
+    document.getElementById('lightbox').style.display = 'none';
+  }
 
   function saveCurrentWidget() {
-    const name = prompt("Widget name:", "Feed " + (widgets.length + 1));
+    const name = prompt("Widget name:", "My Feed " + (widgets.length + 1));
     if (!name) return;
-    widgets.push({ name, config: {...currentConfig}, savedAt: new Date().toISOString() });
+    widgets.push({ name, config: currentConfig, savedAt: new Date().toISOString() });
     localStorage.setItem('instawidgets', JSON.stringify(widgets));
-    alert("✅ Widget saved!");
+    alert("✅ Saved!");
   }
 
   function showSavedWidgets() {
@@ -265,17 +259,61 @@
 
   function openWebflowModal() {
     if (!currentConfig.username) return alert("Generate preview first");
-    // (Webflow code omitted here for space - it works)
-    alert("Webflow code ready! (Full version is in the code)");
-    // Full modal logic is included in the actual file
+
+    const code = `<!-- InstaFeed Embed - @${currentConfig.username} -->
+<div id="instafed"></div>
+<script>
+(async function() {
+  const config = ${JSON.stringify(currentConfig, null, 2)};
+  const container = document.getElementById('instafed');
+
+  async function render() {
+    // Demo data (replace with real proxy in production)
+    const posts = Array.from({length: config.limit}, (_, i) => ({
+      image: \`https://picsum.photos/id/\${200 + i}/800/800\`,
+      likes: 2400 + Math.floor(Math.random()*6000)
+    }));
+
+    let html = '<div style="max-width:100%;margin:0 auto;">';
+    if (config.showTitle) html += \`<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;color:\${config.accent}"><i class="fab fa-instagram" style="font-size:28px"></i><h2 style="margin:0">@\${config.username}</h2></div>\`;
+
+    const style = config.layout === 'masonry' 
+      ? \`column-count:\${config.cols};column-gap:\${config.spacing}px\` 
+      : \`display:grid;grid-template-columns:repeat(\${config.cols},1fr);gap:\${config.spacing}px\`;
+
+    html += \`<div style="\${style}">\`;
+    posts.forEach(p => {
+      html += \`<div style="background:white;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+        <img src="\${p.image}" style="width:100%;aspect-ratio:1/1;object-fit:cover;" loading="lazy">
+        <div style="padding:12px 16px;font-size:0.9rem;display:flex;justify-content:space-between;">
+          <span>\${p.likes.toLocaleString()} likes</span>
+          <span style="color:\${config.accent}">View →</span>
+        </div>
+      </div>\`;
+    });
+    html += '</div></div>';
+    container.innerHTML = html;
+  }
+  render();
+  setInterval(render, 3600000);
+})();
+<\/script>`;
+
+    document.getElementById('webflowCode').value = code;
+    document.getElementById('webflowModal').classList.remove('hidden');
   }
 
-  function copyWebflowCode() { /* implemented in full file */ }
-  function closeWebflowModal() { /* implemented in full file */ }
+  function copyWebflowCode() {
+    document.getElementById('webflowCode').select();
+    navigator.clipboard.writeText(document.getElementById('webflowCode').value);
+    alert("✅ Copied!");
+  }
 
-  window.onload = () => {
-    generateFeed();
-  };
+  function closeWebflowModal() {
+    document.getElementById('webflowModal').classList.add('hidden');
+  }
+
+  window.onload = generateFeed;
 </script>
 </body>
 </html>
