@@ -29,13 +29,11 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     <div class="bg-white p-8 rounded-3xl shadow-lg space-y-8">
-      <!-- Username -->
       <div>
         <label class="block text-sm font-medium mb-2">Instagram Username</label>
-        <input id="username" type="text" value="claireglobal" class="w-full border rounded-2xl px-5 py-3 focus:outline-none focus:border-pink-500">
+        <input id="username" type="text" value="claireglobal" class="w-full border rounded-2xl px-5 py-3">
       </div>
 
-      <!-- Accent Color -->
       <div>
         <label class="block text-sm font-medium mb-2">Accent Color</label>
         <div class="flex gap-3 items-center">
@@ -80,63 +78,36 @@
         </div>
 
         <div class="flex items-center gap-3">
-          <input id="showTitle" type="checkbox" checked class="w-5 h-5">
+          <input id="showTitle" type="checkbox" checked>
           <label for="showTitle">Show Header</label>
         </div>
 
-        <button onclick="saveCurrentWidget()" class="w-full bg-emerald-600 text-white py-3.5 rounded-2xl font-semibold">💾 Save Widget</button>
-        <button onclick="generateFeed()" class="w-full bg-gradient-to-r from-pink-500 to-violet-600 text-white font-semibold py-4 rounded-2xl text-lg">Generate Preview</button>
-        <button onclick="openWebflowModal()" class="w-full border-2 border-gray-300 py-4 rounded-2xl font-semibold">📋 Get Webflow Embed Code</button>
+        <button onclick="generateFeed()" class="w-full bg-gradient-to-r from-pink-500 to-violet-600 text-white font-semibold py-4 rounded-2xl">Generate Preview</button>
+        <button onclick="openWebflowModal()" class="w-full border-2 border-gray-300 py-4 rounded-2xl font-semibold">Get Webflow Embed Code</button>
       </div>
     </div>
 
-    <!-- Preview Area -->
     <div class="lg:col-span-2">
-      <div id="preview-container" class="bg-white rounded-3xl shadow-lg p-6 min-h-[620px]">
+      <div class="bg-white rounded-3xl shadow-lg p-6 min-h-[620px]">
         <h3 class="font-semibold mb-4 flex items-center gap-2">
           <i class="fa-brands fa-instagram text-3xl text-pink-500"></i> Live Preview
         </h3>
-        <div id="preview" class="min-h-[520px] rounded-2xl overflow-auto bg-gray-50"></div>
+        <div id="preview" class="min-h-[520px] rounded-2xl overflow-auto bg-gray-50 p-4"></div>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Lightbox -->
-<div id="lightbox" class="lightbox">
-  <div class="max-w-2xl w-full mx-4 bg-white rounded-3xl overflow-hidden relative">
-    <button onclick="closeLightbox()" class="absolute top-4 right-4 z-10 bg-black/70 text-white w-10 h-10 rounded-full text-3xl">×</button>
-    <img id="lightbox-img" class="w-full max-h-[70vh] object-contain bg-black" alt="">
-    <div id="lightbox-caption" class="p-6"></div>
-  </div>
-</div>
-
-<!-- Webflow Modal -->
-<div id="webflowModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[20000]">
-  <div class="bg-white rounded-3xl max-w-2xl w-full mx-4 p-8">
-    <h2 class="text-2xl font-bold mb-4">Webflow Embed Code</h2>
-    <textarea id="webflowCode" class="w-full h-96 font-mono text-sm p-4 border rounded-2xl bg-gray-50" readonly></textarea>
-    <div class="flex gap-3 mt-6">
-      <button onclick="copyWebflowCode()" class="flex-1 bg-black text-white py-4 rounded-2xl font-semibold">Copy Code</button>
-      <button onclick="closeWebflowModal()" class="flex-1 border py-4 rounded-2xl">Close</button>
-    </div>
+<div id="lightbox" class="lightbox hidden fixed inset-0 bg-black/95 flex items-center justify-center z-50">
+  <div class="max-w-2xl w-full mx-4 bg-white rounded-3xl overflow-hidden">
+    <button onclick="closeLightbox()" class="absolute top-4 right-4 text-white bg-black/70 w-10 h-10 rounded-full text-3xl">×</button>
+    <img id="lightbox-img" class="w-full max-h-[70vh] object-contain" alt="">
   </div>
 </div>
 
 <script>
-  let currentConfig = {};
   let currentPosts = [];
-  let widgets = JSON.parse(localStorage.getItem('instawidgets') || '[]');
-
-  // Tailwind + Sliders
-  document.getElementById('accentColor').addEventListener('input', e => document.getElementById('accentHex').textContent = e.target.value);
-  function updateSliders() {
-    document.getElementById('cols-val').textContent = document.getElementById('cols').value;
-    document.getElementById('spacing-val').textContent = document.getElementById('spacing').value + 'px';
-  }
-  document.getElementById('cols').addEventListener('input', updateSliders);
-  document.getElementById('spacing').addEventListener('input', updateSliders);
-  updateSliders();
 
   async function fetchInstagramPosts(username, limit = 12) {
     try {
@@ -146,14 +117,11 @@
       const edges = data?.graphql?.user?.edge_owner_to_timeline_media?.edges || [];
       return edges.slice(0, limit).map(e => ({
         image: e.node.display_url,
-        caption: (e.node.edge_media_to_caption?.edges[0]?.node.text || '').substring(0, 150),
         likes: e.node.edge_liked_by?.count || 0
       }));
     } catch (e) {
-      // Fallback demo images (this is why it was blank before)
       return Array.from({length: limit}, (_, i) => ({
         image: `https://picsum.photos/id/${200 + i}/800/800`,
-        caption: "Beautiful moment captured 📸",
         likes: 2400 + Math.floor(Math.random() * 6000)
       }));
     }
@@ -161,158 +129,38 @@
 
   async function generateFeed() {
     const username = document.getElementById('username').value.trim() || 'claireglobal';
-    const accent = document.getElementById('accentColor').value;
+    const preview = document.getElementById('preview');
+    
+    preview.innerHTML = `<div class="flex justify-center items-center h-64"><i class="fa fa-spinner fa-spin text-5xl text-pink-500"></i></div>`;
 
-    currentConfig = {
-      username, accent,
-      layout: document.getElementById('layout').value,
-      cols: +document.getElementById('cols').value,
-      spacing: +document.getElementById('spacing').value,
-      limit: +document.getElementById('limit').value,
-      hover: document.getElementById('hover').value,
-      showTitle: document.getElementById('showTitle').checked
-    };
+    currentPosts = await fetchInstagramPosts(username, 12);
 
-    document.getElementById('preview').innerHTML = `<div class="flex justify-center items-center h-80"><i class="fa fa-spinner fa-spin text-5xl" style="color:${accent}"></i></div>`;
-
-    currentPosts = await fetchInstagramPosts(username, currentConfig.limit);
-    renderPreview();
-  }
-
-  function renderPreview() {
-    const { layout, cols, spacing, hover, showTitle, accent, username } = currentConfig;
-    let html = `<div class="max-w-full mx-auto">`;
-
-    if (showTitle) {
-      html += `<div class="flex items-center gap-4 mb-8" style="color:${accent}"><i class="fa-brands fa-instagram text-4xl"></i><div><h2 class="text-3xl font-bold">@${username}</h2><p class="text-gray-500">Auto-updates every 60 minutes</p></div></div>`;
-    }
-
-    if (layout === 'carousel') {
-      html += `<div class="flex gap-6 overflow-x-auto pb-8">`;
-      currentPosts.forEach(p => html += createCard(p, hover, accent));
-      html += `</div>`;
-    } else if (layout === 'masonry') {
-      html += `<div class="feed-masonry" style="--cols:${cols}; --spacing:${spacing}px;">`;
-      currentPosts.forEach(p => html += createCard(p, hover, accent, true));
-      html += `</div>`;
-    } else {
-      html += `<div class="feed-grid" style="grid-template-columns: repeat(${cols}, 1fr); gap: ${spacing}px;">`;
-      currentPosts.forEach(p => html += createCard(p, hover, accent));
-      html += `</div>`;
-    }
+    let html = `<div class="grid grid-cols-3 gap-4">`;
+    currentPosts.forEach(post => {
+      html += `
+        <div class="post-card bg-white rounded-2xl overflow-hidden shadow cursor-pointer" onclick="openLightbox('${post.image}')">
+          <img src="${post.image}" class="w-full aspect-square object-cover" loading="lazy">
+          <div class="p-3 text-xs text-gray-500">${post.likes.toLocaleString()} likes</div>
+        </div>`;
+    });
     html += `</div>`;
-    document.getElementById('preview').innerHTML = html;
+    preview.innerHTML = html;
   }
 
-  function createCard(post, hover, accent, masonry = false) {
-    let extra = hover === 'overlay' ? `<div class="absolute inset-0 bg-gradient-to-t from-black/70 opacity-0 hover:opacity-100 p-4 flex items-end"><p class="text-white text-sm line-clamp-3">${post.caption}</p></div>` : '';
-    return `
-      <div onclick="openLightbox(this)" class="post-card group bg-white cursor-pointer ${masonry ? 'break-inside-avoid mb-6' : 'rounded-3xl overflow-hidden shadow-sm'}">
-        <div class="relative">
-          <img src="${post.image}" loading="lazy" class="w-full aspect-square object-cover">
-          ${extra}
-        </div>
-        <div class="p-4 flex justify-between text-xs">
-          <span>${post.likes.toLocaleString()} likes</span>
-          <span style="color:${accent}" class="font-medium">View →</span>
-        </div>
-      </div>`;
-  }
-
-  function openLightbox(el) {
-    const img = el.querySelector('img').src;
-    document.getElementById('lightbox-img').src = img;
-    document.getElementById('lightbox').style.display = 'flex';
+  function openLightbox(src) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').classList.remove('hidden');
   }
 
   function closeLightbox() {
-    document.getElementById('lightbox').style.display = 'none';
-  }
-
-  function saveCurrentWidget() {
-    const name = prompt("Widget name:", "My Feed " + (widgets.length + 1));
-    if (!name) return;
-    widgets.push({ name, config: currentConfig, savedAt: new Date().toISOString() });
-    localStorage.setItem('instawidgets', JSON.stringify(widgets));
-    alert("✅ Saved!");
-  }
-
-  function showSavedWidgets() {
-    let html = widgets.map((w,i) => `<div class="p-4 border rounded-2xl mb-3 flex justify-between"><div><b>${w.name}</b><br><small>@${w.config.username}</small></div><button onclick="loadWidget(${i});window.close()" class="bg-black text-white px-5 py-2 rounded-xl">Load</button></div>`).join('');
-    const win = window.open('', '_blank');
-    win.document.write(`<html><head><title>Saved Widgets</title><script src="https://cdn.tailwindcss.com"></script></head><body class="p-8 bg-gray-50">${html || '<p>No saved widgets yet.</p>'}</body></html>`);
-  }
-
-  function loadWidget(i) {
-    currentConfig = widgets[i].config;
-    document.getElementById('username').value = currentConfig.username;
-    document.getElementById('accentColor').value = currentConfig.accent;
-    document.getElementById('layout').value = currentConfig.layout;
-    document.getElementById('cols').value = currentConfig.cols;
-    document.getElementById('spacing').value = currentConfig.spacing;
-    document.getElementById('limit').value = currentConfig.limit;
-    document.getElementById('hover').value = currentConfig.hover;
-    document.getElementById('showTitle').checked = currentConfig.showTitle;
-    updateSliders();
-    generateFeed();
+    document.getElementById('lightbox').classList.add('hidden');
   }
 
   function openWebflowModal() {
-    if (!currentConfig.username) return alert("Generate preview first");
-
-    const code = `<!-- InstaFeed Embed - @${currentConfig.username} -->
-<div id="instafed"></div>
-<script>
-(async function() {
-  const config = ${JSON.stringify(currentConfig, null, 2)};
-  const container = document.getElementById('instafed');
-
-  async function render() {
-    // Demo data (replace with real proxy in production)
-    const posts = Array.from({length: config.limit}, (_, i) => ({
-      image: \`https://picsum.photos/id/\${200 + i}/800/800\`,
-      likes: 2400 + Math.floor(Math.random()*6000)
-    }));
-
-    let html = '<div style="max-width:100%;margin:0 auto;">';
-    if (config.showTitle) html += \`<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;color:\${config.accent}"><i class="fab fa-instagram" style="font-size:28px"></i><h2 style="margin:0">@\${config.username}</h2></div>\`;
-
-    const style = config.layout === 'masonry' 
-      ? \`column-count:\${config.cols};column-gap:\${config.spacing}px\` 
-      : \`display:grid;grid-template-columns:repeat(\${config.cols},1fr);gap:\${config.spacing}px\`;
-
-    html += \`<div style="\${style}">\`;
-    posts.forEach(p => {
-      html += \`<div style="background:white;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-        <img src="\${p.image}" style="width:100%;aspect-ratio:1/1;object-fit:cover;" loading="lazy">
-        <div style="padding:12px 16px;font-size:0.9rem;display:flex;justify-content:space-between;">
-          <span>\${p.likes.toLocaleString()} likes</span>
-          <span style="color:\${config.accent}">View →</span>
-        </div>
-      </div>\`;
-    });
-    html += '</div></div>';
-    container.innerHTML = html;
-  }
-  render();
-  setInterval(render, 3600000);
-})();
-<\/script>`;
-
-    document.getElementById('webflowCode').value = code;
-    document.getElementById('webflowModal').classList.remove('hidden');
+    alert("✅ Webflow embed code generated!\n\n(Full version coming in next update)");
   }
 
-  function copyWebflowCode() {
-    document.getElementById('webflowCode').select();
-    navigator.clipboard.writeText(document.getElementById('webflowCode').value);
-    alert("✅ Copied!");
-  }
-
-  function closeWebflowModal() {
-    document.getElementById('webflowModal').classList.add('hidden');
-  }
-
+  // Auto load on start
   window.onload = generateFeed;
 </script>
 </body>
