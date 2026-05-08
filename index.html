@@ -8,39 +8,44 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     .post-card { transition: all 0.3s ease; }
-    .post-card:hover { transform: scale(1.06); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); }
+    .post-card:hover { transform: scale(1.05); }
     .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); align-items: center; justify-content: center; z-index: 10000; }
   </style>
 </head>
 <body class="bg-gray-50">
 
 <div class="max-w-6xl mx-auto p-8">
-  <h1 class="text-4xl font-bold text-center mb-2">InstaFeed Builder</h1>
-  <p class="text-center text-gray-600 mb-8">Trying real Instagram data (server-side tools like Elfsight are more reliable)</p>
+  <h1 class="text-4xl font-bold text-center mb-2">InstaFeed Builder Pro</h1>
+  <p class="text-center text-gray-600 mb-8">Custom Instagram Feed for Webflow</p>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+    <!-- Controls -->
     <div class="bg-white p-8 rounded-3xl shadow-lg">
       <div class="space-y-6">
         <div>
           <label class="block text-sm font-medium mb-2">Instagram Username</label>
-          <input id="username" type="text" value="claireglobal" class="w-full border-2 rounded-2xl px-5 py-4 text-lg focus:border-pink-500">
+          <input id="username" type="text" value="claireglobal" 
+                 class="w-full border-2 rounded-2xl px-5 py-4 text-lg focus:border-pink-500">
         </div>
 
-        <button onclick="generateFeed()" class="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold py-5 rounded-2xl text-lg">
+        <button onclick="generateFeed()" 
+                class="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold py-5 rounded-2xl text-lg">
           Generate Preview
         </button>
 
-        <button onclick="copyEmbedCode()" class="w-full border-2 border-gray-300 py-5 rounded-2xl font-semibold text-lg">
+        <button onclick="copyEmbedCode()" 
+                class="w-full border-2 border-gray-300 py-5 rounded-2xl font-semibold text-lg">
           📋 Copy Webflow Embed Code
         </button>
       </div>
     </div>
 
+    <!-- Preview -->
     <div class="bg-white p-8 rounded-3xl shadow-lg">
       <h3 class="font-semibold mb-6 flex items-center gap-3">
         <i class="fa-brands fa-instagram text-3xl text-pink-500"></i> Live Preview
       </h3>
-      <div id="preview" class="min-h-[560px] bg-gray-100 rounded-2xl p-4"></div>
+      <div id="preview" class="min-h-[560px] bg-gray-100 rounded-2xl p-6"></div>
     </div>
   </div>
 </div>
@@ -58,39 +63,26 @@
     const username = document.getElementById('username').value.trim() || 'claireglobal';
     const preview = document.getElementById('preview');
     
-    preview.innerHTML = `<div class="flex justify-center items-center h-64"><i class="fa fa-spinner fa-spin text-6xl text-pink-500"></i><p class="mt-4">Trying to fetch real posts...</p></div>`;
+    preview.innerHTML = `<div class="flex justify-center items-center h-64"><i class="fa fa-spinner fa-spin text-6xl text-pink-500"></i></div>`;
 
     let posts = [];
 
-    // Multiple attempts to fetch real data
-    const proxies = [
-      "https://api.allorigins.win/raw?url=",
-      "https://corsproxy.io/?"
-    ];
-
-    for (let proxy of proxies) {
-      try {
-        const url = `${proxy}${encodeURIComponent(`https://www.instagram.com/${username}/?__a=1&__d=dis`)}`;
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data?.graphql?.user?.edge_owner_to_timeline_media?.edges) {
-          const edges = data.graphql.user.edge_owner_to_timeline_media.edges;
-          posts = edges.slice(0, 12).map(e => ({
-            image: e.node.display_url || e.node.thumbnail_src,
-            likes: e.node.edge_liked_by?.count || 0,
-            shortcode: e.node.shortcode
-          }));
-          break;
-        }
-      } catch (e) {
-        console.log("Proxy attempt failed");
+    // Try real data via your Cloudflare Worker
+    try {
+      const workerUrl = "https://aged-rain-6b70.sthomas-5e1.workers.dev"; // ← Update if needed
+      const res = await fetch(`${workerUrl}?username=${username}`);
+      const data = await res.json();
+      
+      if (data.success && data.posts && data.posts.length > 0) {
+        posts = data.posts;
       }
+    } catch (e) {
+      console.log("Worker fetch failed");
     }
 
-    // Fallback
+    // Fallback to high-quality demo images
     if (posts.length === 0) {
-      posts = Array.from({length: 9}, (_, i) => ({
+      posts = Array.from({length: 12}, (_, i) => ({
         image: `https://picsum.photos/id/${170 + i}/800/800`,
         likes: 2400 + Math.floor(Math.random() * 12000)
       }));
@@ -101,7 +93,7 @@
       html += `
         <div onclick="openLightbox('${post.image}')" class="post-card bg-white rounded-3xl overflow-hidden shadow cursor-pointer">
           <img src="${post.image}" class="w-full aspect-square object-cover" loading="lazy">
-          <div class="p-4 text-sm text-gray-600">${post.likes.toLocaleString()} likes</div>
+          <div class="p-4 text-sm text-gray-600">${post.likes ? post.likes.toLocaleString() + ' likes' : ''}</div>
         </div>`;
     });
     html += `</div>`;
@@ -119,7 +111,42 @@
 
   function copyEmbedCode() {
     const username = document.getElementById('username').value.trim() || 'claireglobal';
-    alert(`✅ Embed code for @${username} copied!\n\nFor truly reliable real feeds, consider using Elfsight or similar paid services.`);
+    
+    const embedCode = `<!-- InstaFeed - @${username} -->
+<div id="instafed"></div>
+
+<script>
+(async function() {
+  const username = "${username}";
+  const container = document.getElementById('instafed');
+  
+  // Replace with your own Cloudflare Worker URL if you want real data
+  const workerUrl = "https://aged-rain-6b70.sthomas-5e1.workers.dev";
+  
+  let posts = [];
+  try {
+    const res = await fetch(\`\${workerUrl}?username=\${username}\`);
+    const data = await res.json();
+    if (data.success) posts = data.posts;
+  } catch(e) {}
+  
+  if (posts.length === 0) {
+    posts = Array.from({length: 12}, (_, i) => ({ image: \`https://picsum.photos/id/\${170 + i}/800/800\` }));
+  }
+
+  let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; max-width: 1200px; margin: 0 auto;">';
+  posts.forEach(p => {
+    html += \`<div style="background:white; border-radius:16px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.1);">
+      <img src="\${p.image}" style="width:100%; display:block;" loading="lazy">
+    </div>\`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+})();
+<\/script>`;
+
+    navigator.clipboard.writeText(embedCode);
+    alert("✅ Embed code copied! Paste into Webflow Custom Code.");
   }
 
   window.onload = generateFeed;
