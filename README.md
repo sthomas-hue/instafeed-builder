@@ -17,4 +17,4 @@ A beautiful, customizable Instagram feed generator. Create embeddable feeds for 
 3. Click **Generate Preview**
 4. Click **Get Webflow Embed Code**
 
-Live Tool → [https://stthomas-hue.github.io/instafeed-builder](https://stthomas-hue.github.io/instafeed-builder)
+Live Tool → [https://sthomas-hue.github.io/instafeed-builder](https://stthomas-hue.github.io/instafeed-builder)
